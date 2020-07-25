@@ -151,7 +151,48 @@ data R = R { unrestrictedField # 'Many :: A, linearField # 'One :: B }
 
 ---
 
+## Linear base library
+
+---
+
+## I/O
+
+```haskell
+-- Ensures I/O state is linearly threaded, meaning it is safe to
+-- expose the IO constructor
+newtype IO a = IO (State# RealWorld #-> (# State# RealWorld, a #))
+
+-- hClose consumes the handle so it can't be used again after it's closed.
+hClose :: Handle #-> IO ()
+
+-- Other I/O operations must also be linear with respect to handle
+-- meaning each operation needs to return a new handle.
+hPutChar :: Handle #-> Char -> RIO Handle
+```
+
+---
+
 ## Examples
+
+---
+
+### I/O
+
+```haskell
+linearGetFirstLine :: FilePath -> RIO (Unrestricted Text)
+linearGetFirstLine fp = do
+  handle <- Linear.openFile fp System.ReadMode
+  (t, handle') <- Linear.hGetLine handle
+  Linear.hClose handle'
+  return t
+  where
+    Control.Builder {..} = Control.monadBuilder
+
+linearPrintFirstLine :: FilePath -> System.IO ()
+linearPrintFirstLine fp = do
+  text <- Linear.run (linearGetFirstLine fp)
+  System.putStrLn (unpack text)
+```
 
 ---
 
