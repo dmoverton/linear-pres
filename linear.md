@@ -9,29 +9,38 @@ autoscale: true
 
 ---
 
-## Motivation
+> Linear types can change the world!
+-- Philip Wadler, 1990
 
 ---
 
-* File handles
-* Arrays
-* `IO` world state
+## Motivation
+
+Linear types make using resources safer and more predictable:
+
+* Safe `malloc`/`free` memory management
+* Safe usage of file handles - closed exactly once, not used after close
+* Safe mutable arrays
+* Safer inlining and guaranteed fusion
 * Session types
 
 ---
 
-## Proposal
+## What is Linearity?
 
 ---
 
 ### Linearity
 
-A function `f` is _linear_ when
-- `f u` is consumed exactly once
-- implies that `u` is consumed exactly once:
+- A function `f` is _linear_ when
+    `f u` is _consumed exactly once_
+    implies that `u` is _consumed exactly once_
+- _Consuming_ a **value** of a data type _exactly once_ means evaluating it to head normal form exactly once, discriminating on its tag any number of times, then consuming its fields exactly once.
+- _Consuming_ a **function** _exactly once_ means applying it and conuming its result exactly once.
 
-- Consuming a value of a data type exactly once means evaluating it to head normal form exactly once, discriminating on its tag any number of times, then consuming its fields exactly once.
-- Consuming a function exactly once means applying it and conuming its result exactly once.
+---
+
+## Proposed GHC extension
 
 ---
 
@@ -41,6 +50,33 @@ A function `f` is _linear_ when
 A #-> B
 ```
 is the type of linear functions from `A` to `B`.
+
+- In papers often written $$A \multimap B $$ (from Linear Logic).
+- Alternative (rejected) proposals:
+    - `A -o B`
+    - `A ->. B`
+
+---
+
+### Simple examples
+
+[.code-highlight: 1-3]
+[.code-highlight: 5-7]
+[.code-highlight: 9-11]
+```haskell
+-- Valid:
+fst :: (a, b) -> a
+fst :: (x, _) = x
+
+-- Not valid:
+fst :: (a, b) #-> a
+fst :: (x, _) = x
+
+-- Not valid:
+dup :: a #-> (a, a)
+dup x = (x, x)
+```
+
 
 ---
 
@@ -76,7 +112,21 @@ data Unrestricted a where
 
 ### Polymorphism
 
-To avoid code duplication functions can have _multipicity polymorphism_.
+Two possible types of `map`:
+
+```haskell
+map :: (a -> b) -> [a] -> [b]
+map :: (a #-> b) -> [a] #-> [b]
+```
+
+- The `map` function preserves the _multiplicity_ of its function argument
+- But we don't want to have to define it twice
+
+---
+
+### Polymorphism
+
+To avoid code duplication, functions can have _multipicity polymorphism_.
 
 ```haskell
 map :: (a #p-> b) -> [a] #p-> [b]
@@ -102,6 +152,15 @@ would require 4 different types without polymorphism:
 (.) :: (b ->  c) -> (a #-> b) -> a ->  c
 (.) :: (b #-> c) -> (a #-> b) -> a #-> c
 ```
+
+- `(p ':* q)` multiplies the multiplicies `p` and `q`:    $$
+\begin{array}{c|cc}
+\texttt{:*}  & 1 & \omega \\
+\hline
+1 & 1 & \omega \\
+\omega & \omega & \omega
+\end{array}
+$$
 
 ---
 
@@ -162,8 +221,11 @@ data R = R { unrestrictedField # 'Many :: A, linearField # 'One :: B }
 -- expose the IO constructor
 newtype IO a = IO (State# RealWorld #-> (# State# RealWorld, a #))
 
+-- Resource-aware IO monad (equivalent of ResourceT IO)
+newtype RIO a = RIO (IORef ReleaseMap -> Linear.IO a)
+
 -- hClose consumes the handle so it can't be used again after it's closed.
-hClose :: Handle #-> IO ()
+hClose :: Handle #-> RIO ()
 
 -- Other I/O operations must also be linear with respect to handle
 -- meaning each operation needs to return a new handle.
