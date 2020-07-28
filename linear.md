@@ -216,6 +216,10 @@ data R = R { unrestrictedField # 'Many :: A, linearField # 'One :: B }
 
 ## I/O
 
+[.code-highlight: 1-3]
+[.code-highlight: 5-6]
+[.code-highlight: 8-9]
+[.code-highlight: 11-14]
 ```haskell
 -- Ensures I/O state is linearly threaded, meaning it is safe to
 -- expose the IO constructor
@@ -230,6 +234,7 @@ hClose :: Handle #-> RIO ()
 -- Other I/O operations must also be linear with respect to handle
 -- meaning each operation needs to return a new handle.
 hPutChar :: Handle #-> Char -> RIO Handle
+hGetChar :: Handle #-> RIO (Unrestricted Char, Handle)
 ```
 
 ---
@@ -255,6 +260,24 @@ linearPrintFirstLine fp = do
   text <- Linear.run (linearGetFirstLine fp)
   System.putStrLn (unpack text)
 ```
+
+**Excercise:**
+What happens if we forget to close the file handle?
+Use the handle more than once?
+Use after close?
+
+---
+
+### Mutable arrays
+
+```haskell
+fromList :: [a] -> (Array a #-> Unrestricted b) -> Unrestricted b
+length :: Array a #-> (Array a, Int)
+write :: Array a #-> Int -> a -> Array a
+read :: Array a #-> Int -> (Array a, Unrestricted a)
+```
+
+**Excercise:** write an in-place array sort
 
 ---
 
