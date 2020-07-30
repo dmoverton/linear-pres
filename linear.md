@@ -383,4 +383,4 @@ swap a i j =
 - [Linear Base Library](https://github.com/tweag/linear-base)
 - [Examples](https://gitlab.haskell.org/ghc/ghc/-/wikis/linear-types/examples)
 - [Simon Peyton Jones - Linear Haskell: practical linearity in a higher-order polymorphic language](https://youtu.be/t0mhvd3-60Y)
-- *[Linear types can change the world!](https://pdfs.semanticscholar.org/24c8/50390fba27fc6f3241cb34ce7bc6f3765627.pdf)* - Philp Wadler, 1990
+- *[Linear types can change the world!](https://pdfs.semanticscholar.org/24c8/50390fba27fc6f3241cb34ce7bc6f3765627.pdf)* - Philip Wadler, 1990
