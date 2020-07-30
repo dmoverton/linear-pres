@@ -27,6 +27,7 @@ autoscale: true
 - Trying it out
 - Examples
 - Related work
+- Time for questions / discussion / hacking
 
 ---
 
@@ -36,7 +37,7 @@ Linear types make using resources safer and more predictable:
 
 * Safe `malloc`/`free` memory management
 * Safe usage of file handles - closed exactly once, not used after close
-* Safe mutable arrays
+* Safe mutable arrays - destructive update
 * Safer inlining and guaranteed fusion
 * Session types
 
@@ -49,8 +50,8 @@ Linear types make using resources safer and more predictable:
 ### Linearity
 
 - A function `f` is _linear_ when
-    `f u` is _consumed exactly once_
-    implies that `u` is _consumed exactly once_
+    **if** `f u` is _consumed exactly once_
+    **then** `u` is _consumed exactly once_
 - _Consuming_ a **value** of a data type _exactly once_ means evaluating it to head normal form exactly once, discriminating on its tag any number of times, then consuming its fields exactly once.
 - _Consuming_ a **function** _exactly once_ means applying it and conuming its result exactly once.
 
@@ -77,16 +78,19 @@ is the type of linear functions from `A` to `B`.
 ### Simple examples
 
 [.code-highlight: 1-3]
-[.code-highlight: 5-7]
-[.code-highlight: 9-11]
+[.code-highlight: 5-6]
+[.code-highlight: 8-9]
+[.code-highlight: 11-13]
 ```haskell
 -- Valid:
-fst :: (a, b) -> a
-fst :: (x, _) = x
+const :: a -> b -> a
+const a _ = a
+
+-- Valid:
+const :: a #-> b -> a
 
 -- Not valid:
-fst :: (a, b) #-> a
-fst :: (x, _) = x
+const :: a -> b #-> a
 
 -- Not valid:
 dup :: a #-> (a, a)
@@ -233,9 +237,11 @@ Provides:
     - Missing support for `where` and `let`
     - Missing support for multiplicity polymorphism
     - Probably missing other stuff too
-- GHC 9.0.1 will have more complete "experimental" support
+- GHC 9.0.1 will have more complete support, but still considered "experimental"
     - Due for release in September 2020
-- Linear base library has instructions for setting up a Stack project with GHC 8.11 and `linear-base` using `nix`
+- `linear-base` library has instructions for setting up a Stack project with GHC 8.11 and `linear-base` using `nix`
+
+^ Refer to `stack.yaml`
 
 ---
 
@@ -248,7 +254,8 @@ Provides:
 [.code-highlight: 1-3]
 [.code-highlight: 5-6]
 [.code-highlight: 8-9]
-[.code-highlight: 11-14]
+[.code-highlight: 11-12]
+[.code-highlight: 14-17]
 ```haskell
 -- Ensures I/O state is linearly threaded, meaning it is safe to
 -- expose the IO constructor
@@ -256,6 +263,9 @@ newtype IO a = IO (State# RealWorld #-> (# State# RealWorld, a #))
 
 -- Resource-aware IO monad (equivalent of ResourceT IO)
 newtype RIO a = RIO (IORef ReleaseMap -> Linear.IO a)
+
+-- Note: non-linear
+openFile :: FilePath -> System.IOMode -> RIO Handle
 
 -- hClose consumes the handle so it can't be used again after it's closed.
 hClose :: Handle #-> RIO ()
@@ -306,11 +316,11 @@ read :: Array a #-> Int -> (Array a, Unrestricted a)
 
 - Note use of continuation passing style for `fromList`
 - Required to ensure that the array is always used linearly
+- Operations return a "new" array
 
 **Excercise:**
 
 - Write a function to swap two elements in an array.
-- Write a function to sort an array.
 
 ---
 
@@ -349,7 +359,7 @@ swap a i j =
 - Mercury
     - Uniqueness using modes
 - Rust
-    - Ownership and borrowing have similarites to uniqueness and linearity
+    - Ownership and borrowing have similarites to uniqueness and linearity, respectively
 
 ---
 
