@@ -12,6 +12,22 @@ autoscale: true
 > Linear types can change the world!
 -- Philip Wadler, 1990
 
+^ Based on Linear Logic (Girard 1987)
+^ 30 years later we are finally about to get an implementation of Linear Types in GHC
+^ So what are they and why has it taken so long?
+
+---
+
+## Outline
+
+- Motivation
+- What are linear types?
+- Proposed GHC extension
+- Linear base library
+- Trying it out
+- Examples
+- Related work
+
 ---
 
 ## Motivation
@@ -223,46 +239,7 @@ Provides:
 
 ---
 
-
 ## Examples
-
----
-
-### Mutable arrays
-
-```haskell
-fromList :: [a] -> (Array a #-> Unrestricted b) -> Unrestricted b
-toList :: Array a #-> (Array a, [a])
-length :: Array a #-> (Array a, Int)
-write :: Array a #-> Int -> a -> Array a
-read :: Array a #-> Int -> (Array a, Unrestricted a)
-```
-
-**Excercise:**
-Write a function to swap two elements in an array.
-Write a function to sort an array.
-
----
-
-```c
-void swap(int a[], int i, int j) {
-  int t = a[i];
-  int u = a[j]
-  a[i] = u;
-  a[j] = t;
-}
-```
-
-[.code-highlight: 0]
-[.code-highlight: 1-6]
-```haskell
-swap :: Array a #-> Int -> Int -> Array a
-swap a i j =
-  Array.read a i & \case
-   (a', Unrestricted t) -> Array.read a' j & \case
-    (a'', Unrestricted u) -> Array.write a'' i u &
-     \a''' -> Array.write a''' j t
-```
 
 ---
 
@@ -310,9 +287,52 @@ linearPrintFirstLine fp = do
 ```
 
 **Excercise:**
-What happens if we forget to close the file handle?
-Use the handle more than once?
-Use after close?
+
+- What happens if we forget to close the file handle?
+- Use the handle more than once?
+- Use after close?
+
+---
+
+### Mutable arrays
+
+```haskell
+fromList :: [a] -> (Array a #-> Unrestricted b) -> Unrestricted b
+toList :: Array a #-> (Array a, [a])
+length :: Array a #-> (Array a, Int)
+write :: Array a #-> Int -> a -> Array a
+read :: Array a #-> Int -> (Array a, Unrestricted a)
+```
+
+- Note use of continuation passing style for `fromList`
+- Required to ensure that the array is always used linearly
+
+**Excercise:**
+
+- Write a function to swap two elements in an array.
+- Write a function to sort an array.
+
+---
+
+```c
+void swap(int a[], int i, int j) {
+  int t = a[i];
+  int u = a[j]
+  a[i] = u;
+  a[j] = t;
+}
+```
+
+[.code-highlight: 0]
+[.code-highlight: 1-6]
+```haskell
+swap :: Array a #-> Int -> Int -> Array a
+swap a i j =
+  Array.read a i & \case
+   (a', Unrestricted t) -> Array.read a' j & \case
+    (a'', Unrestricted u) -> Array.write a'' i u &
+     \a''' -> Array.write a''' j t
+```
 
 ---
 
@@ -321,9 +341,15 @@ Use after close?
 ---
 
 - *Linear Types Can Change the World!*, Philip Wadler, 1990
+    - Based on Linear Logic
+    - Linearity on types rather than functions
 - Clean
+    - Uniqueness types - "I have the only unique reference to this object"
+    - Used for I/O state
 - Mercury
+    - Uniqueness using modes
 - Rust
+    - Ownership and borrowing have similarites to uniqueness and linearity
 
 ---
 
