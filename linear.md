@@ -26,7 +26,7 @@ Linear types make using resources safer and more predictable:
 
 ---
 
-## What is Linearity?
+## What are Linear Types?
 
 ---
 
@@ -188,33 +188,85 @@ type (#->) = FUN 'One
 
 ---
 
-### Multiplicity annotations
-
-Multiplicity and type:
-
-```haskell
-\x :: A # 'One -> x
-```
-
-Multiplicity without type:
-
-```haskell
-\x # 'One -> x
-```
-
-Records:
-
-```haskell
-data R = R { unrestrictedField # 'Many :: A, linearField # 'One :: B }
-```
-
----
-
 ## Linear base library
 
 ---
 
-## I/O
+### Linear base library
+
+[https://github.com/tweag/linear-base](https://github.com/tweag/linear-base)
+
+Needed to write anything useful with linear types
+
+Provides:
+
+- Linear Prelude
+- Linear arrays
+- Linear I/O
+- ...
+
+---
+
+## Trying it out
+
+---
+
+### Trying it out
+
+- GHC 8.11 has a partial implementation of `-XLinearTypes`
+    - Missing support for `where` and `let`
+    - Missing support for multiplicity polymorphism
+    - Probably missing other stuff too
+- GHC 9.0.1 will have more complete "experimental" support
+    - Due for release in September 2020
+- Linear base library has instructions for setting up a Stack project with GHC 8.11 and `linear-base` using `nix`
+
+---
+
+
+## Examples
+
+---
+
+### Mutable arrays
+
+```haskell
+fromList :: [a] -> (Array a #-> Unrestricted b) -> Unrestricted b
+toList :: Array a #-> (Array a, [a])
+length :: Array a #-> (Array a, Int)
+write :: Array a #-> Int -> a -> Array a
+read :: Array a #-> Int -> (Array a, Unrestricted a)
+```
+
+**Excercise:**
+Write a function to swap two elements in an array.
+Write a function to sort an array.
+
+---
+
+```c
+void swap(int a[], int i, int j) {
+  int t = a[i];
+  int u = a[j]
+  a[i] = u;
+  a[j] = t;
+}
+```
+
+[.code-highlight: 0]
+[.code-highlight: 1-6]
+```haskell
+swap :: Array a #-> Int -> Int -> Array a
+swap a i j =
+  Array.read a i & \case
+   (a', Unrestricted t) -> Array.read a' j & \case
+    (a'', Unrestricted u) -> Array.write a'' i u &
+     \a''' -> Array.write a''' j t
+```
+
+---
+
+### I/O
 
 [.code-highlight: 1-3]
 [.code-highlight: 5-6]
@@ -236,10 +288,6 @@ hClose :: Handle #-> RIO ()
 hPutChar :: Handle #-> Char -> RIO Handle
 hGetChar :: Handle #-> RIO (Unrestricted Char, Handle)
 ```
-
----
-
-## Examples
 
 ---
 
@@ -268,29 +316,12 @@ Use after close?
 
 ---
 
-### Mutable arrays
-
-```haskell
-fromList :: [a] -> (Array a #-> Unrestricted b) -> Unrestricted b
-length :: Array a #-> (Array a, Int)
-write :: Array a #-> Int -> a -> Array a
-read :: Array a #-> Int -> (Array a, Unrestricted a)
-```
-
-**Excercise:** write an in-place array sort
-
----
-
-## Exceptions
-
----
-
 ## Related Work
 
 ---
 
 - *Linear Types Can Change the World!*, Philip Wadler, 1990
-- Concurrent Clean
+- Clean
 - Mercury
 - Rust
 
@@ -301,7 +332,7 @@ read :: Array a #-> Int -> (Array a, Unrestricted a)
 |  | Linearity on the arrows | Linearity on the kinds |
 | --- | --- | --- |
 | Linear types | Linear Haskell | Rust (borrowing) |
-| Uniqueness types | | Rust (Ownership), Concurrent Clean |
+| Uniqueness types | | Rust (ownership), Clean, Mercury (modes) |
 
 [^1]: Taken from [SPJ's talk](https://youtu.be/t0mhvd3-60Y)
 
